@@ -1,0 +1,7 @@
+[package]
+name = "rusty_image"
+version = "0.1.0"
+authors = ["Rudi B. Svartveit <rudsvar@gmail.com>"]
+
+[dependencies]
+image = "*"
