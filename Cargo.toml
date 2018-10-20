@@ -1,5 +1,5 @@
 [package]
-name = "rusty_image"
+name = "rusty-image"
 version = "0.1.0"
 authors = ["Rudi B. Svartveit <rudsvar@gmail.com>"]
 
