@@ -1,20 +1,10 @@
-# rusty-image
+# Rusty Image
 A program written in Rust that converts an image to colored ASCII text.
-
-## Building
-To build it, simply run the following commands.
-The --release flag is recommended, as it makes the program a lot faster.
-
-```bash
-cargo build --release
-```
-
-The binary should then be found in target/debug/rusty-image or target/release/rusty-image depending on the flag used to build it.
 
 ## Usage
 
-Either run the binary as mentioned earlier, or use cargo run.
-Provide a filename and the scale, where 0.01 would mean print every hundredth pixel.
+Provide a filename and the scale, where 0.01 would print every hundredth pixel, 0.1 would print every tenth, and so on.
+Using the --release flag makes reading the image a lot faster.
 
 Example:
 ```bash
