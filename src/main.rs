@@ -1,5 +1,3 @@
-extern crate image;
-
 use image::Rgb;
 use image::RgbImage;
 
