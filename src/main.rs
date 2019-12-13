@@ -1,69 +1,87 @@
-use image::Rgb;
-use image::RgbImage;
+use log::*;
+use std::fmt;
+use std::path::PathBuf;
+use structopt::StructOpt;
 
-use std::env::args;
-use std::process::exit;
+#[derive(StructOpt, Debug)]
+#[structopt(about = "An application for turning images into ASCII")]
+struct Opt {
+    /// Input image
+    ///
+    /// The image to convert to ASCII.
+    #[structopt(parse(from_os_str))]
+    image: PathBuf,
 
-fn main() {
-    let args: Vec<String> = args().collect();
+    /// Image scale
+    ///
+    /// The factor to multiply the image size with.
+    /// If not specified, it will attempt to fit the terminal.
+    #[structopt(short, long)]
+    scale: Option<f64>,
 
-    if args.len() < 3 {
-        println!("Not enough arguments, please provide a file and scale.");
-        exit(1);
-    }
+    /// The characters to use to represent change in alpha.
+    #[structopt(short, long)]
+    chars: Option<Vec<char>>,
 
-    let scale = match args[2].parse() {
-        Ok(s) => s,
-        Err(_) => {
-            let default = 0.01;
-            println!("Invalid scale, defaulting to {}", default);
-            default
-        }
-    };
+    /// A filler character to extend the image width
+    ///
+    /// By default this is the same as the neighboring characters.
+    #[structopt(short, long)]
+    fill: Option<char>,
 
-    match image::open(&args[1]) {
+    /// Silence all output
+    #[structopt(short, long)]
+    quiet: bool,
+
+    /// Verbose mode (-v, -vv, -vvv, etc)
+    #[structopt(short, long, parse(from_occurrences))]
+    verbose: usize,
+}
+
+fn main() -> fmt::Result {
+    let opt = Opt::from_args();
+
+    stderrlog::new()
+        .quiet(opt.quiet)
+        .verbosity(opt.verbose + 1)
+        .init()
+        .unwrap();
+
+    // Open the provided image
+    match image::open(&opt.image) {
         Ok(img) => {
-            let img = img.to_rgb();
-            let chars = "#%+;.".chars().collect();
-            let ascii = to_ascii(img, scale, &chars);
-            println!("{}", ascii);
+            let img = img.to_rgba();
+            let chars = opt.chars.unwrap_or(" .-%#@".chars().collect());
+
+            // Find the step size based on:
+            // 1. The provided scale if there is one
+            // 2. The terminal size
+            // 3. A default if none exist
+            let step_size = if let Ok((tw, th)) = termion::terminal_size() {
+                let (w, h) = img.dimensions();
+                if let Some(scale) = opt.scale {
+                    (1.0 / scale) as usize
+                } else {
+                    usize::max(
+                        1,
+                        usize::max(
+                            ((w * 2) as f64 / (tw - 1) as f64).ceil() as usize,
+                            (h as f64 / th as f64).ceil() as usize,
+                        ),
+                    )
+                }
+            } else {
+                let default = 0.01;
+                warn!("Could not find scale, defaulting to {}", default);
+                (1.0 / default) as usize
+            };
+
+            let mut buf = String::new();
+            rusty_image::image_to_ascii(&mut buf, img, step_size, &chars, opt.fill)?;
+            println!("{}", buf);
         }
-        Err(e) => println!("Could not open image: {}", e),
+        Err(e) => error!("Could not open image: {}", e),
     };
-}
 
-fn to_ascii(img: RgbImage, scale: f64, chars: &Vec<char>) -> String {
-    let mut res = String::new();
-    res.push_str("\x1b[7l");
-
-    let (w, h) = img.dimensions();
-    let step_size = (1.0 / scale) as usize;
-
-    for y in (0..h).step_by(step_size) {
-        for x in (0..w).step_by(step_size) {
-            let px = img.get_pixel(x, y);
-            let (r, g, b) = rgb(&px);
-            let avg = ((r + g + b) / 3) as f64;
-            let c = num_to_char(avg, chars);
-            res.push_str(&format!("\x1b[38;2;{};{};{}m,{}", r, g, b, c));
-
-            let percent = (y * w + x) as f32 / (w * h) as f32;
-            print!("{:.1}%\r", percent * 100.0);
-        }
-        res.push('\n');
-    }
-
-    res.push_str("\x1b[?7h");
-    return res;
-}
-
-fn rgb(px: &Rgb<u8>) -> (u8, u8, u8) {
-    (px[0], px[1], px[2])
-}
-
-fn num_to_char(avg: f64, chars: &Vec<char>) -> char {
-    let ratio = avg / 256.0;
-    let len = chars.len();
-    let index = ratio * len as f64;
-    chars[index as usize]
+    Ok(())
 }
