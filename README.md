@@ -1,4 +1,7 @@
 # Rusty Image
+
+[![Build Status](https://travis-ci.org/rudsvar/rusty-image.svg?branch=master)](https://travis-ci.org/rudsvar/rusty-image)
+
 A program written in Rust that converts an image to colored ASCII text.
 
 ## Usage
