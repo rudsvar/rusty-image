@@ -1,4 +1,4 @@
-use log::*;
+use log::{error, warn};
 use std::fmt;
 use std::path::PathBuf;
 use structopt::StructOpt;
